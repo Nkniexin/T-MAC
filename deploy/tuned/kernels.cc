@@ -9,10 +9,10 @@
 #endif
 
 #ifdef __ARM_NEON
-typedef float16_t float_type;
+typedef float16_t float_type;   //如果有__ARM_NEON ,起用fp16
 #else
 #include <stdint.h>
-typedef float float_type;
+typedef float float_type;  //不然使用默认的fp32
 #endif
 
 #endif
@@ -26,7 +26,7 @@ inline int32_t tbl_g4_float_float_update_impl(int32_t m, float_type* c, float_ty
     const uint8x16_t vec_mask = vdupq_n_u8(0x0f);
     uint8x16x2_t vec_lut[K];
 
-#pragma unroll
+#pragma unroll  //一种编译器指令，提示编译器在编译代码时展开循环。
     for (int k = 0; k < K; k++) {
         vec_lut[k] = vld2q_u8(reinterpret_cast<uint8_t*>(lut + k * 16));
     }
@@ -366,10 +366,10 @@ inline int32_t tbl_g4_int8_float_update_impl(int32_t m, float_type* c, int8_t* l
             for (int k = 0; k < ActK; k++) {
                 // (M // bm, KK / K / 4, bm / 16 / 2, K * 16)
                 __m128i vec_as = _mm_loadu_si128(reinterpret_cast<__m128i*>(a + i * K + (kk + k) * 16));
-                __m128i vec_a_bot = _mm_and_si128(vec_as, vec_mask);
-                __m128i vec_a_top = _mm_and_si128(_mm_srli_epi16(vec_as, 4), vec_mask);
+                __m128i vec_a_bot = _mm_and_si128(vec_as, vec_mask); //128位中每8位的低4位
+                __m128i vec_a_top = _mm_and_si128(_mm_srli_epi16(vec_as, 4), vec_mask); //128w位中每8位的高4位
 
-                __m256i vec_lut_ = _mm256_set_m128i(vec_lut[kk + k], vec_lut[kk + k]);
+                __m256i vec_lut_ = _mm256_set_m128i(vec_lut[kk + k], vec_lut[kk + k]);  //拼接两个相同的128i向量
                 __m256i vec_a = _mm256_set_m128i(vec_a_top, vec_a_bot);
                 __m256i vec_v = _mm256_shuffle_epi8(vec_lut_, vec_a);
                 adder.push(vec_v, k);
@@ -829,6 +829,7 @@ extern "C"
   
   
   
+
   
   
   
